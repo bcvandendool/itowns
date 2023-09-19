@@ -57,8 +57,6 @@ function eraseSuggestionList(form) {
  * @property    {HTMLElement}   parentElement   The parent HTML container of `this.domElement`.
  */
 class Searchbar extends Widget {
-    #_onSelected;
-
     /**
      * @param   {View}          view                                    The iTowns view the searchbar should be linked
                                                                         * to.
@@ -120,7 +118,7 @@ class Searchbar extends Widget {
                 + 'the documentation.',
             );
         }
-        this.#_onSelected = geocodingOptions.onSelected ?? (() => {});
+        this._onSelected = geocodingOptions.onSelected ?? (() => {});
 
 
 
@@ -203,7 +201,7 @@ class Searchbar extends Widget {
                         });
 
                         autocompleteItem.addEventListener('click', () => {
-                            this.#_onSelected(info);
+                            this._onSelected(info);
 
                             input.value = autocompleteItem.getAttribute('location');
                             eraseSuggestionList(form);

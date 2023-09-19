@@ -72,14 +72,12 @@ const DEFAULT_BUTTONS = {
  * navigation.zoomIn.onclick = newMethod;
  */
 class Navigation extends Widget {
-    #_view;
-
-    #_action(params) {
+    _action(params) {
         params.time = this.animationDuration;
-        return this.#_view.controls.lookAtCoordinate(params);
+        return this._view.controls.lookAtCoordinate(params);
     }
 
-    #_addDefaultButton(settings, onclick) {
+    _addDefaultButton(settings, onclick) {
         return this.addButton(settings.id, settings.content, settings.info, onclick, settings.parentId);
     }
 
@@ -136,7 +134,7 @@ class Navigation extends Widget {
         }
 
         super(view, options, DEFAULT_OPTIONS);
-        this.#_view = view;
+        this._view = view;
 
         this.direction = options.direction || DEFAULT_OPTIONS.direction;
         if (!['column', 'row'].includes(this.direction)) {
@@ -166,8 +164,8 @@ class Navigation extends Widget {
 
         // Add a compass widget if requested.
         if (options.displayCompass ?? DEFAULT_OPTIONS.displayCompass) {
-            this.compass = this.#_addDefaultButton(DEFAULT_BUTTONS.compass, () => {
-                this.#_action({ heading: 0, tilt: 89.5 });
+            this.compass = this._addDefaultButton(DEFAULT_BUTTONS.compass, () => {
+                this._action({ heading: 0, tilt: 89.5 });
             });
 
             // Manage compass rotation when the view's camera is moved.
@@ -178,8 +176,8 @@ class Navigation extends Widget {
 
         // Add a 3D toggle button if requested.
         if (options.display3DToggle ?? DEFAULT_OPTIONS.display3DToggle) {
-            this.toggle3D = this.#_addDefaultButton(DEFAULT_BUTTONS.toggle3D, () => {
-                this.#_action({ tilt: this.#_view.controls.getTilt() < 89 ? 89.5 : 40 });
+            this.toggle3D = this._addDefaultButton(DEFAULT_BUTTONS.toggle3D, () => {
+                this._action({ tilt: this._view.controls.getTilt() < 89 ? 89.5 : 40 });
             });
 
             // Manage button content toggle when the view's camera is moved.
@@ -190,15 +188,15 @@ class Navigation extends Widget {
 
         // Add a zoom-in button if requested.
         if (options.displayZoomIn ?? DEFAULT_OPTIONS.displayZoomIn) {
-            this.zoomIn = this.#_addDefaultButton(DEFAULT_BUTTONS.zoomIn, () => {
-                this.#_action({ zoom: Math.min(20, this.#_view.controls.getZoom() + 1) });
+            this.zoomIn = this._addDefaultButton(DEFAULT_BUTTONS.zoomIn, () => {
+                this._action({ zoom: Math.min(20, this._view.controls.getZoom() + 1) });
             });
         }
 
         // Add a zoom-out button if requested.
         if (options.displayZoomOut ?? DEFAULT_OPTIONS.displayZoomOut) {
-            this.zoomOut = this.#_addDefaultButton(DEFAULT_BUTTONS.zoomOut, () => {
-                this.#_action({ zoom: Math.max(3, this.#_view.controls.getZoom() - 1) });
+            this.zoomOut = this._addDefaultButton(DEFAULT_BUTTONS.zoomOut, () => {
+                this._action({ zoom: Math.max(3, this._view.controls.getZoom() - 1) });
             });
         }
     }
@@ -246,7 +244,7 @@ class Navigation extends Widget {
         // key events on the view without having to click the view to grant it focus.
         window.addEventListener('pointerup', () => {
             if (document.activeElement === button) {
-                this.#_view.domElement.focus();
+                this._view.domElement.focus();
             }
         });
 

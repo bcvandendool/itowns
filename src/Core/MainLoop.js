@@ -93,18 +93,18 @@ function filterChangeSources(updateSources, geometryLayer) {
 
 
 class MainLoop extends EventDispatcher {
-    #needsRedraw = false;
-    #updateLoopRestarted = true;
-    #lastTimestamp = 0;
     constructor(scheduler, engine) {
         super();
         this.renderingState = RENDERING_PAUSED;
         this.scheduler = scheduler;
         this.gfxEngine = engine; // TODO: remove me
+        this.needsRedraw = false;
+        this.updateLoopRestarted = true;
+        this.lastTimestamp = 0;
     }
 
     scheduleViewUpdate(view, forceRedraw) {
-        this.#needsRedraw |= forceRedraw;
+        this.needsRedraw |= forceRedraw;
 
         if (this.renderingState !== RENDERING_SCHEDULED) {
             this.renderingState = RENDERING_SCHEDULED;
@@ -113,11 +113,11 @@ class MainLoop extends EventDispatcher {
                 document.title += ' ⌛';
             }
 
-            requestAnimationFrame((timestamp) => { this.#step(view, timestamp); });
+            requestAnimationFrame((timestamp) => { this.step(view, timestamp); });
         }
     }
 
-    #update(view, updateSources, dt) {
+    update(view, updateSources, dt) {
         const context = {
             camera: view.camera,
             engine: this.gfxEngine,
@@ -136,7 +136,7 @@ class MainLoop extends EventDispatcher {
         for (const geometryLayer of view.getLayers((x, y) => !y)) {
             context.geometryLayer = geometryLayer;
             if (geometryLayer.ready && geometryLayer.visible && !geometryLayer.frozen) {
-                view.execFrameRequesters(MAIN_LOOP_EVENTS.BEFORE_LAYER_UPDATE, dt, this.#updateLoopRestarted, geometryLayer);
+                view.execFrameRequesters(MAIN_LOOP_EVENTS.BEFORE_LAYER_UPDATE, dt, this.updateLoopRestarted, geometryLayer);
 
                 // Filter updateSources that are relevant for the geometryLayer
                 const srcs = filterChangeSources(updateSources, geometryLayer);
@@ -158,23 +158,23 @@ class MainLoop extends EventDispatcher {
                 // Clear the cache of expired resources
                 geometryLayer.cache.flush();
 
-                view.execFrameRequesters(MAIN_LOOP_EVENTS.AFTER_LAYER_UPDATE, dt, this.#updateLoopRestarted, geometryLayer);
+                view.execFrameRequesters(MAIN_LOOP_EVENTS.AFTER_LAYER_UPDATE, dt, this.updateLoopRestarted, geometryLayer);
             }
         }
     }
 
-    #step(view, timestamp) {
-        const dt = timestamp - this.#lastTimestamp;
+    step(view, timestamp) {
+        const dt = timestamp - this.lastTimestamp;
         view._executeFrameRequestersRemovals();
 
-        view.execFrameRequesters(MAIN_LOOP_EVENTS.UPDATE_START, dt, this.#updateLoopRestarted);
+        view.execFrameRequesters(MAIN_LOOP_EVENTS.UPDATE_START, dt, this.updateLoopRestarted);
 
-        const willRedraw = this.#needsRedraw;
-        this.#lastTimestamp = timestamp;
+        const willRedraw = this.needsRedraw;
+        this.lastTimestamp = timestamp;
 
         // Reset internal state before calling _update (so future calls to View.notifyChange()
         // can properly change it)
-        this.#needsRedraw = false;
+        this.needsRedraw = false;
         this.renderingState = RENDERING_PAUSED;
         const updateSources = new Set(view._changeSources);
         view._changeSources.clear();
@@ -182,9 +182,9 @@ class MainLoop extends EventDispatcher {
         // update camera
         const dim = this.gfxEngine.getWindowSize();
 
-        view.execFrameRequesters(MAIN_LOOP_EVENTS.BEFORE_CAMERA_UPDATE, dt, this.#updateLoopRestarted);
+        view.execFrameRequesters(MAIN_LOOP_EVENTS.BEFORE_CAMERA_UPDATE, dt, this.updateLoopRestarted);
         view.camera.update(dim.x, dim.y);
-        view.execFrameRequesters(MAIN_LOOP_EVENTS.AFTER_CAMERA_UPDATE, dt, this.#updateLoopRestarted);
+        view.execFrameRequesters(MAIN_LOOP_EVENTS.AFTER_CAMERA_UPDATE, dt, this.updateLoopRestarted);
 
         // Disable camera's matrix auto update to make sure the camera's
         // world matrix is never updated mid-update.
@@ -197,23 +197,23 @@ class MainLoop extends EventDispatcher {
         view.camera.camera3D.matrixAutoUpdate = false;
 
         // update data-structure
-        this.#update(view, updateSources, dt);
+        this.update(view, updateSources, dt);
 
         if (this.scheduler.commandsWaitingExecutionCount() == 0) {
             this.dispatchEvent({ type: 'command-queue-empty' });
         }
 
         // Redraw *only* if needed.
-        // (redraws only happen when this.#needsRedraw is true, which in turn only happens when
+        // (redraws only happen when this.needsRedraw is true, which in turn only happens when
         // view.notifyChange() is called with redraw=true)
         // As such there's no continuous update-loop, instead we use a ad-hoc update/render
         // mechanism.
         if (willRedraw) {
-            this.#renderView(view, dt);
+            this.renderView(view, dt);
         }
 
         // next time, we'll consider that we've just started the loop if we are still PAUSED now
-        this.#updateLoopRestarted = this.renderingState === RENDERING_PAUSED;
+        this.updateLoopRestarted = this.renderingState === RENDERING_PAUSED;
 
         if (__DEBUG__) {
             document.title = document.title.substr(0, document.title.length - 2);
@@ -221,11 +221,11 @@ class MainLoop extends EventDispatcher {
 
         view.camera.camera3D.matrixAutoUpdate = oldAutoUpdate;
 
-        view.execFrameRequesters(MAIN_LOOP_EVENTS.UPDATE_END, dt, this.#updateLoopRestarted);
+        view.execFrameRequesters(MAIN_LOOP_EVENTS.UPDATE_END, dt, this.updateLoopRestarted);
     }
 
-    #renderView(view, dt) {
-        view.execFrameRequesters(MAIN_LOOP_EVENTS.BEFORE_RENDER, dt, this.#updateLoopRestarted);
+    renderView(view, dt) {
+        view.execFrameRequesters(MAIN_LOOP_EVENTS.BEFORE_RENDER, dt, this.updateLoopRestarted);
 
         if (view.render) {
             view.render();
@@ -234,7 +234,7 @@ class MainLoop extends EventDispatcher {
             this.gfxEngine.renderView(view);
         }
 
-        view.execFrameRequesters(MAIN_LOOP_EVENTS.AFTER_RENDER, dt, this.#updateLoopRestarted);
+        view.execFrameRequesters(MAIN_LOOP_EVENTS.AFTER_RENDER, dt, this.updateLoopRestarted);
     }
 }
 

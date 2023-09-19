@@ -20,30 +20,27 @@ const maxValueUint32 = 2 ** 32 - 1;
 const crsWGS84 = 'EPSG:4326';
 
 class FeatureMesh extends THREE.Group {
-    #currentCrs;
-    #originalCrs;
-    #collection = new THREE.Group();
-    #place = new THREE.Group();
     constructor(meshes, collection) {
         super();
         this.meshes = new THREE.Group().add(...meshes);
-        this.#collection = new THREE.Group().add(this.meshes);
-        this.#collection.quaternion.copy(collection.quaternion);
-        this.#collection.position.copy(collection.position);
-        this.#collection.scale.copy(collection.scale);
-        this.#collection.updateMatrix();
+        this.collection = new THREE.Group().add(this.meshes);
+        this.collection.quaternion.copy(collection.quaternion);
+        this.collection.position.copy(collection.position);
+        this.collection.scale.copy(collection.scale);
+        this.collection.updateMatrix();
 
-        this.#originalCrs = collection.crs;
-        this.#currentCrs = this.#originalCrs;
+        this.originalCrs = collection.crs;
+        this.currentCrs = this.originalCrs;
         this.extent = collection.extent;
 
-        this.add(this.#place.add(this.#collection));
+        this.place = new THREE.Group();
+        this.add(this.place.add(this.collection));
     }
 
     as(crs) {
-        if (this.#currentCrs !== crs) {
-            this.#currentCrs = crs;
-            if (crs == this.#originalCrs) {
+        if (this.currentCrs !== crs) {
+            this.currentCrs = crs;
+            if (crs == this.originalCrs) {
                 // reset transformation
                 this.place.position.set(0, 0, 0);
                 this.position.set(0, 0, 0);
@@ -52,8 +49,8 @@ class FeatureMesh extends THREE.Group {
             } else {
                 // calculate the scale transformation to transform the feature.extent
                 // to feature.extent.as(crs)
-                coord.crs = Crs.formatToEPSG(this.#originalCrs);
-                extent.copy(this.extent).applyMatrix4(this.#collection.matrix);
+                coord.crs = Crs.formatToEPSG(this.originalCrs);
+                extent.copy(this.extent).applyMatrix4(this.collection.matrix);
                 extent.as(coord.crs, extent);
                 extent.spatialEuclideanDimensions(dim_ref);
                 extent.planarDimensions(dim);
@@ -63,13 +60,13 @@ class FeatureMesh extends THREE.Group {
 
                 // Position and orientation
                 // remove original position
-                this.#place.position.copy(this.#collection.position).negate();
+                this.place.position.copy(this.collection.position).negate();
 
                 // get mesh coordinate
-                coord.setFromVector3(this.#collection.position);
+                coord.setFromVector3(this.collection.position);
 
                 // get method to calculate orientation
-                const crsInput = this.#originalCrs == 'EPSG:3857' ? crsWGS84 : this.#originalCrs;
+                const crsInput = this.originalCrs == 'EPSG:3857' ? crsWGS84 : this.originalCrs;
                 const crs2crs = OrientationUtils.quaternionFromCRSToCRS(crsInput, crs);
                 // calculate orientation to crs
                 crs2crs(coord.as(crsWGS84), this.quaternion);

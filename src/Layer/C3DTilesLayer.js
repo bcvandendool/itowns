@@ -29,7 +29,6 @@ export const C3DTILES_LAYER_EVENTS = {
 const update = process3dTilesNode();
 
 class C3DTilesLayer extends GeometryLayer {
-    #fillColorMaterialsBuffer;
     /**
      * Constructs a new instance of 3d tiles layer.
      * @constructor
@@ -120,7 +119,7 @@ class C3DTilesLayer extends GeometryLayer {
         this._style = config.style || null;
 
         /** @type {Map<string, THREE.MeshStandardMaterial>} */
-        this.#fillColorMaterialsBuffer = new Map();
+        this.fillColorMaterialsBuffer = new Map();
 
         /**
          * Map all C3DTFeature of the layer according their tileId and their batchId
@@ -435,11 +434,11 @@ class C3DTilesLayer extends GeometryLayer {
                                 const materialId = color.getHexString() + opacity;
 
                                 let material = null;
-                                if (this.#fillColorMaterialsBuffer.has(materialId)) {
-                                    material = this.#fillColorMaterialsBuffer.get(materialId);
+                                if (this.fillColorMaterialsBuffer.has(materialId)) {
+                                    material = this.fillColorMaterialsBuffer.get(materialId);
                                 } else {
                                     material = new THREE.MeshStandardMaterial({ color, opacity, transparent: opacity < 1, alphaTest: 0.09 });
-                                    this.#fillColorMaterialsBuffer.set(materialId, material);// bufferize
+                                    this.fillColorMaterialsBuffer.set(materialId, material);// bufferize
                                 }
 
                                 // compute materialIndex
@@ -482,10 +481,10 @@ class C3DTilesLayer extends GeometryLayer {
         });
 
         // remove buffered materials not in currentMaterials
-        for (const [id, fillMaterial] of this.#fillColorMaterialsBuffer) {
+        for (const [id, fillMaterial] of this.fillColorMaterialsBuffer) {
             if (!currentMaterials.includes(fillMaterial)) {
                 fillMaterial.dispose();
-                this.#fillColorMaterialsBuffer.delete(id);
+                this.fillColorMaterialsBuffer.delete(id);
             }
         }
 
@@ -493,7 +492,7 @@ class C3DTilesLayer extends GeometryLayer {
     }
 
     get materialCount() {
-        return this.#fillColorMaterialsBuffer.size;
+        return this.fillColorMaterialsBuffer.size;
     }
 
     set style(value) {

@@ -23,21 +23,21 @@ const labelPosition = new THREE.Vector2();
  * @class DomNode
  */
 class DomNode {
-    #domVisibility = false;
-
     constructor() {
         this.dom = document.createElement('div');
 
         this.dom.style.display = 'none';
 
         this.visible = true;
+
+        this.domVisibility = false;
     }
 
-    get visible() { return this.#domVisibility; }
+    get visible() { return this.domVisibility; }
 
     set visible(v) {
-        if (v !== this.#domVisibility) {
-            this.#domVisibility = v;
+        if (v !== this.domVisibility) {
+            this.domVisibility = v;
             this.dom.style.display = v ? 'block' : 'none';
         }
     }
@@ -145,7 +145,6 @@ class LabelsNode extends THREE.Group {
  * internally for optimisation.
  */
 class LabelLayer extends GeometryLayer {
-    #filterGrid = new ScreenGrid();
     /**
      * @constructor
      * @extends Layer
@@ -190,6 +189,8 @@ class LabelLayer extends GeometryLayer {
         this.toHide = new THREE.Group();
 
         this.labelDomelement = domElement;
+
+        this.filterGrid = new ScreenGrid();
 
         // The margin property defines a space around each label that cannot be occupied by another label.
         // For example, if some labelLayer has a margin value of 5, there will be at least 10 pixels
@@ -303,40 +304,40 @@ class LabelLayer extends GeometryLayer {
     preUpdate(context, sources) {
         if (sources.has(this.parent)) {
             this.object3d.clear();
-            this.#filterGrid.width = this.parent.maxScreenSizeNode * 0.5;
-            this.#filterGrid.height = this.parent.maxScreenSizeNode * 0.5;
-            this.#filterGrid.resize();
+            this.filterGrid.width = this.parent.maxScreenSizeNode * 0.5;
+            this.filterGrid.height = this.parent.maxScreenSizeNode * 0.5;
+            this.filterGrid.resize();
         }
     }
 
-    #submitToRendering(labelsNode) {
+    submitToRendering(labelsNode) {
         this.object3d.add(labelsNode);
     }
 
-    #disallowToRendering(labelsNode) {
+    disallowToRendering(labelsNode) {
         this.toHide.add(labelsNode);
     }
 
-    #findClosestDomElement(node) {
+    findClosestDomElement(node) {
         if (node.parent?.isTileMesh) {
-            return node.parent.link[this.id]?.domElements || this.#findClosestDomElement(node.parent);
+            return node.parent.link[this.id]?.domElements || this.findClosestDomElement(node.parent);
         } else {
             return this.domElement;
         }
     }
 
-    #hasLabelChildren(object) {
+    hasLabelChildren(object) {
         return object.children.every(c => c.layerUpdateState && c.layerUpdateState[this.id]?.hasFinished());
     }
 
     // Remove all labels invisible with pre-culling with screen grid
     // We use the screen grid with maximum size of node on screen
-    #removeCulledLabels(node) {
+    removeCulledLabels(node) {
         // copy labels array
         const labels = node.children.slice();
 
         // reset filter
-        this.#filterGrid.reset();
+        this.filterGrid.reset();
 
         // sort labels by order
         labels.sort((a, b) => b.order - a.order);
@@ -355,13 +356,13 @@ class LabelLayer extends GeometryLayer {
             // transform label position to local node system
             labelPosition.sub(westNorthNode);
             labelPosition.y += nodeDimensions.y;
-            labelPosition.divide(nodeDimensions).multiplyScalar(this.#filterGrid.width);
+            labelPosition.divide(nodeDimensions).multiplyScalar(this.filterGrid.width);
 
             // update the projected position to transform to local filter grid sytem
             label.updateProjectedPosition(labelPosition.x, labelPosition.y);
 
             // use screen grid to remove all culled labels
-            if (!this.#filterGrid.insert(label)) {
+            if (!this.filterGrid.insert(label)) {
                 node.removeLabel(label);
             }
         });
@@ -381,15 +382,15 @@ class LabelLayer extends GeometryLayer {
             return;
         }
 
-        if (!node.material.visible && this.#hasLabelChildren(node)) {
-            return this.#disallowToRendering(labelsNode);
+        if (!node.material.visible && this.hasLabelChildren(node)) {
+            return this.disallowToRendering(labelsNode);
         }
 
         const extentsDestination = node.getExtentsByProjection(this.source.crs) || [node.extent];
         const zoomDest = extentsDestination[0].zoom;
 
         if (zoomDest < layer.zoom.min || zoomDest > layer.zoom.max) {
-            return this.#disallowToRendering(labelsNode);
+            return this.disallowToRendering(labelsNode);
         }
 
         if (node.layerUpdateState[this.id] === undefined) {
@@ -399,11 +400,11 @@ class LabelLayer extends GeometryLayer {
         if (!this.source.extentInsideLimit(node.extent, zoomDest)) {
             node.layerUpdateState[this.id].noMoreUpdatePossible();
             return;
-        } else if (this.#hasLabelChildren(node.parent)) {
+        } else if (this.hasLabelChildren(node.parent)) {
             if (!node.material.visible) {
                 labelsNode.needsUpdate = true;
             }
-            this.#submitToRendering(labelsNode);
+            this.submitToRendering(labelsNode);
             return;
         } else if (!node.layerUpdateState[this.id].canTryUpdate()) {
             return;
@@ -425,7 +426,7 @@ class LabelLayer extends GeometryLayer {
 
             labelsNode.initializeDom();
 
-            this.#findClosestDomElement(node).add(labelsNode.domElements);
+            this.findClosestDomElement(node).add(labelsNode.domElements);
 
             result.forEach((labels) => {
                 // Clean if there isnt' parent
@@ -453,7 +454,7 @@ class LabelLayer extends GeometryLayer {
 
                 node.addEventListener('show', () => labelsNode.domElements.labels.show());
 
-                node.addEventListener('hidden', () => this.#disallowToRendering(labelsNode));
+                node.addEventListener('hidden', () => this.disallowToRendering(labelsNode));
 
                 // Necessary event listener, to remove any Label attached to
                 node.addEventListener('removed', () => this.removeNodeDomElement(node));
@@ -463,7 +464,7 @@ class LabelLayer extends GeometryLayer {
                 }
 
                 if (this.performance) {
-                    this.#removeCulledLabels(labelsNode);
+                    this.removeCulledLabels(labelsNode);
                 }
             }
 

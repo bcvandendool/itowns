@@ -14,7 +14,6 @@
  * @property {object} [userData={}] - some userData
  */
 class C3DTFeature {
-    #info;
     constructor(tileId, batchId, groups, info, userData = {}) {
         /** @type {number} */
         this.tileId = tileId;
@@ -29,7 +28,7 @@ class C3DTFeature {
         this.userData = userData;
 
         /** @type {object} */
-        this.#info = info;
+        this.info = info;
     }
 
     /**
@@ -37,7 +36,7 @@ class C3DTFeature {
      * @returns {object} - batchTable info
      */
     getInfo() {
-        return this.#info;
+        return this.info;
     }
 }
 

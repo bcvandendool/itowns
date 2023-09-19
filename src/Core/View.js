@@ -115,9 +115,6 @@ const viewers = [];
 let screenMeters;
 
 class View extends THREE.EventDispatcher {
-    #layers = [];
-    #pixelDepthBuffer = new Uint8Array(4);
-    #fullSizeDepthBuffer;
     /**
      * Constructs an Itowns View instance
      *
@@ -207,6 +204,8 @@ class View extends THREE.EventDispatcher {
 
         this.camera.resize(this.domElement.clientWidth, this.domElement.clientHeight);
 
+        this.layers = [];
+
         const fn = () => {
             this.removeEventListener(VIEW_EVENTS.LAYERS_INITIALIZED, fn);
             this.dispatchEvent({ type: VIEW_EVENTS.INITIALIZED });
@@ -214,7 +213,8 @@ class View extends THREE.EventDispatcher {
 
         this.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED, fn);
 
-        this.#fullSizeDepthBuffer = new Uint8Array(4 * this.camera.width * this.camera.height);
+        this.pixelDepthBuffer = new Uint8Array(4);
+        this.fullSizeDepthBuffer = new Uint8Array(4 * this.camera.width * this.camera.height);
 
         // Indicates that view's domElement can be focused (the negative value indicates that domElement can't be
         // focused sequentially using tab key). Focus is needed to capture some key events.
@@ -338,7 +338,7 @@ class View extends THREE.EventDispatcher {
                 return layer._reject(new Error('Cant add GeometryLayer: missing a preUpdate function'));
             }
 
-            this.#layers.push(layer);
+            this.layers.push(layer);
         }
 
         if (layer.object3d && !layer.object3d.parent && layer.object3d !== this.scene) {
@@ -382,7 +382,7 @@ class View extends THREE.EventDispatcher {
                 throw new Error(`Error to detach ${layerId} from ${parentLayer.id}`);
             } else if (parentLayer == undefined) {
                 // Remove layer from viewer
-                this.#layers.splice(this.#layers.findIndex(l => l.id == layerId), 1);
+                this.layers.splice(this.layers.findIndex(l => l.id == layerId), 1);
             }
             if (layer.isColorLayer) {
                 // Update color layers sequence
@@ -429,7 +429,7 @@ class View extends THREE.EventDispatcher {
         if (changeSource) {
             this._changeSources.add(changeSource);
             if ((changeSource.isTileMesh || changeSource.isCamera)) {
-                this.#fullSizeDepthBuffer.needsUpdate = true;
+                this.fullSizeDepthBuffer.needsUpdate = true;
             }
         }
         this.mainLoop.scheduleViewUpdate(this, needsRedraw);
@@ -456,7 +456,7 @@ class View extends THREE.EventDispatcher {
      */
     getLayers(filter) {
         const result = [];
-        for (const layer of this.#layers) {
+        for (const layer of this.layers) {
             if (!filter || filter(layer)) {
                 result.push(layer);
             }
@@ -998,14 +998,14 @@ class View extends THREE.EventDispatcher {
         // Render/Read to buffer
         let buffer;
         if (viewPaused) {
-            if (this.#fullSizeDepthBuffer.needsUpdate) {
-                this.readDepthBuffer(0, 0, dim.x, dim.y, this.#fullSizeDepthBuffer);
-                this.#fullSizeDepthBuffer.needsUpdate = false;
+            if (this.fullSizeDepthBuffer.needsUpdate) {
+                this.readDepthBuffer(0, 0, dim.x, dim.y, this.fullSizeDepthBuffer);
+                this.fullSizeDepthBuffer.needsUpdate = false;
             }
             const id = ((dim.y - mouse.y - 1) * dim.x + mouse.x) * 4;
-            buffer = this.#fullSizeDepthBuffer.slice(id, id + 4);
+            buffer = this.fullSizeDepthBuffer.slice(id, id + 4);
         } else {
-            buffer = this.readDepthBuffer(mouse.x, mouse.y, 1, 1, this.#pixelDepthBuffer);
+            buffer = this.readDepthBuffer(mouse.x, mouse.y, 1, 1, this.pixelDepthBuffer);
         }
 
         screen.x = (mouse.x / dim.x) * 2 - 1;
@@ -1117,7 +1117,7 @@ class View extends THREE.EventDispatcher {
             height = this.domElement.clientHeight;
         }
 
-        this.#fullSizeDepthBuffer = new Uint8Array(4 * width * height);
+        this.fullSizeDepthBuffer = new Uint8Array(4 * width * height);
         this.mainLoop.gfxEngine.onWindowResize(width, height);
         if (width !== 0 && height !== 0) {
             this.camera.resize(width, height);

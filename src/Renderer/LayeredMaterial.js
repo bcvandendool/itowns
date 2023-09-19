@@ -96,7 +96,6 @@ export const ELEVATION_MODES = {
 let nbSamplers;
 const fragmentShader = [];
 class LayeredMaterial extends THREE.RawShaderMaterial {
-    #_visible = true;
     constructor(options = {}, crsCount) {
         super(options);
 
@@ -171,6 +170,7 @@ class LayeredMaterial extends THREE.RawShaderMaterial {
         this.uniforms.colorOffsetScales = new THREE.Uniform(new Array(nbSamplers[1]).fill(identityOffsetScale));
         this.uniforms.colorTextureCount = new THREE.Uniform(0);
 
+        let _visible = this.visible;
         // can't do an ES6 setter/getter here
         Object.defineProperty(this, 'visible', {
             // Knowing the visibility of a `LayeredMaterial` is useful. For example in a
@@ -182,10 +182,10 @@ class LayeredMaterial extends THREE.RawShaderMaterial {
             // things, like in `TileDebug`, or in later PR to come (#1303 for example).
             //
             // TODO : verify if there is a better mechanism to avoid this event
-            get() { return this.#_visible; },
+            get() { return _visible; },
             set(v) {
-                if (this.#_visible != v) {
-                    this.#_visible = v;
+                if (_visible != v) {
+                    _visible = v;
                     this.dispatchEvent({ type: v ? 'shown' : 'hidden' });
                 }
             },
